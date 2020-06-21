@@ -2,10 +2,11 @@ import numpy as np
 import pandas as pd
 import os
 import math
-from betti_num import get_betti_num
-from resource import *
+from structure import get_betti_num
+from config import *
 
-def get_feature_withoutbin(data_dir, id):
+# composition feature
+def get_feature_composition(data_dir, id):
     with open(data_dir + '/atoms/' + id + '_enlarge.npz', 'rb') as structfile:
         data = np.load(structfile)
         center_atom_vec=data['CAV']
@@ -21,44 +22,35 @@ def get_feature_withoutbin(data_dir, id):
     element_properties = pd.read_csv(data_dir + '/element_properties.csv')
     element_properties.set_index('Abbr', inplace=True)
     # element_properties.drop(columns=['NfUnfilled', 'NfValence'])
-    Feature_1 = []; tmp_array = []
+
+    Feature = []; tmp_array = []
     for ele, n in typ_dict.items():
         ele_list = list(element_properties.loc[ele])
         for i in range(n):
             tmp_array.append(ele_list)
-    Feature_1.append(np.mean(tmp_array, axis=0))
-    Feature_1.append(np.std(tmp_array, axis=0))
-    # Feature_1.append(np.median(tmp_array, axis=0))
-    Feature_1.append(np.sum(tmp_array, axis=0))
+    Feature.append(np.mean(tmp_array, axis=0))
+    Feature.append(np.std(tmp_array, axis=0))
+    Feature.append(np.sum(tmp_array, axis=0))
+    Feature.append(np.max(tmp_array), axis=0)
+    Feature.append(np.min(tmp_array), axis=0)
+
     Feature_1 = np.asarray(Feature_1, float)
     Feature_1 = np.concatenate(Feature_1, axis=0)
-    with open(data_dir + '/feature_element/' + id + '_feature.npy', 'wb') as outfile:
-        np.save(outfile, Feature_1)
 
-    # get structure feature
-    with open(data_dir + '/betti_num/' + id, 'r') as phfile:
-        lines = phfile.read().splitlines()
-    if lines == []:
-        get_betti_num(data_dir, id)
-    pair_dict = {}
-    pair_i = 0
-    for line in lines:
-        typ, dim, birth, death = line.split()
-        dim = int(dim); death = float(death)
-        if typ not in pair_dict:
-            pair_dict[typ] = pair_i
-            pair_i += 1
+    if not os.path.exists(data_dir + "/feature_composition"):
+        os.makedirs(data_dir + "/feature_composition")
+
+    with open(data_dir + '/feature_composition/' + id + '_feature.npy', 'wb') as outfile:
+        np.save(outfile, Feature_1)
 
 
 def get_feature_with_s_nobin(data_dir, id):
-    with open(data_dir + '/atom_single_sorted', 'r') as sf:
+    with open(data_dir + '/atoms_frequency.txt', 'r') as sf:
         slines = sf.read().splitlines()
     common_pair = {}
     i = 0
     for line in slines:
         s, n = line.split()
-        if int(n) < 100:
-            break
         common_pair[s] = i
         i += 1
     com_len = len(common_pair)
@@ -77,13 +69,9 @@ def get_feature_with_s_nobin(data_dir, id):
             ele_Barcode[typ] = [[], [], [], [], []] # Bar0Death Bar1Birth Bar1Death Bar2Birth Bar2Death
     
     # get structure feature
-    try:
-        with open(data_dir + '/betti_num/' + id, 'r') as phfile:
-            lines = phfile.read().splitlines()
-    except:
-        get_betti_num(data_dir, id)
-        with open(data_dir + '/betti_num/' + id, 'r') as phfile:
-            lines = phfile.read().splitlines()
+    with open(data_dir + '/betti_num/' + id, 'r') as phfile:
+        lines = phfile.read().splitlines()
+
     if lines == []:
         get_betti_num(data_dir, id)
     pair_dict = {}
@@ -249,18 +237,19 @@ def get_feature_with_s_nobin(data_dir, id):
     Feature_3 = np.concatenate(Feature_3, axis=0)
     Feature = np.concatenate((Feature_2, Feature_3), axis=0)
     # print(Feature.shape)
+    if not os.path.exists(data_dir + "/feature_add_s_nobin"):
+        os.makedirs(data_dir + "/feature_add_s_nobin")
+
     with open(data_dir + '/feature_add_s_nobin/' + id + '_feature.npy', 'wb') as outfile:
         np.save(outfile, Feature)
 
 def get_feature_with_s_nobin_Bar0(data_dir, id):
-    with open(data_dir + '/atom_single_sorted', 'r') as sf:
+    with open(data_dir + '/atoms_frequency.txt', 'r') as sf:
         slines = sf.read().splitlines()
     common_pair = {}
     i = 0
     for line in slines:
         s, n = line.split()
-        # if int(n) < 100:
-        #     break
         common_pair[s] = i
         i += 1
     com_len = len(common_pair)
@@ -350,29 +339,32 @@ def get_feature_with_s_nobin_Bar0(data_dir, id):
     Feature_3 = np.concatenate(Feature_3, axis=0)
     # print(Feature_3.shape)
     Feature = np.concatenate((Feature_2, Feature_3), axis=0)
+    if not os.path.exists(data_dir + "/feature_add_s_nobin_Bar0"):
+        os.makedirs(data_dir + "/feature_add_s_nobin_Bar0")
+
     with open(data_dir + '/feature_add_s_nobin_Bar0/' + id + '_feature.npy', 'wb') as outfile:
         np.save(outfile, Feature)
 
-# 拓扑+晶体组成的性质
-def get_feature_topo_compo(icsd_dir):
-    with open("11.txt", 'r') as f:
-        lines = f.read().splitlines()
-    id_list = []
-    for l in lines:
-        id_list.append(l.split()[0])
-    
-    csv_data = pd.read_csv(icsd_dir + '/icsd-all.csv')
-    csv_data.fillna(0, inplace=True)
-    
-    # 组成性质从第127个开始
-    columns_list = csv_data.columns.values.tolist()[126:-1]
-    compo_prop = np.asarray(csv_data.loc[:, columns_list])
+# topological feature plus composition feature
+def get_feature_topo_compo(data_dir, id):
+    name = id + "_feature.npy"
 
-    for i in range(len(id_list)):
-        id = id_list[i]
-        with open(icsd_dir + '/feature_add_s_nobin/' + id + "_feature.npy", "rb") as f:
-            feature = np.load(f)
-        Feature = np.concatenate((compo_prop[i], feature), axis=0)
+    if not os.path.exists(data_dir + '/feature_add_s_nobin/' + name):
+        get_feature_with_s_nobin(data_dir, id)
 
-        with open(icsd_dir + "/feature_topo_compo/" + id + "_feature.npy", "wb") as outfile:
-            np.save(outfile, Feature)
+    with open(data_dir + '/feature_add_s_nobin/' + name, "rb") as f:
+        feature_topo = np.load(f)
+
+    if not os.path.exists(data_dir + '/feature_composition/' + name):
+        get_feature_composition(data_dir, id)
+
+    with open(data_dir + '/feature_composition/' + name, "rb") as f:
+        feature_compo = np.load(f)
+
+    Feature = np.concatenate((feature_compo, feature_topo), axis=0)
+
+    if not os.path.exists(data_dir + "/feature_topo_compo"):
+        os.makedirs(data_dir + "/feature_topo_compo")
+
+    with open(data_dir + "/feature_topo_compo/" + name, "wb") as outfile:
+        np.save(outfile, Feature)
