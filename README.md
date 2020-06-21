@@ -8,5 +8,5 @@ data and code to reduplicate paper: Topological representations of crystalline c
 
 ## Usage
 1. unzip datasets zip file data.zip
-2. configure the base data directory in resource.py
+2. configure the base data directory in config.py
 3. run main.py
