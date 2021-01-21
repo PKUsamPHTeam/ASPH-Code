@@ -87,6 +87,8 @@ def enlarge_cell(data_dir, id):
 
 # betti number for one structure
 def get_betti_num(data_dir, id):
+    if os.path.exists(data_dir + '/betti_num/' + id):
+        return "exists"
     with open(data_dir + '/atoms/' + id + '_enlarge.npz', 'rb') as structfile:
         data = np.load(structfile)
         center_atom_vec=data['CAV']; cart_enlarge_vec=data['CEV']

@@ -101,7 +101,7 @@ def get_id_list(data_dir):
 def batch_handle(id_list):
     for id in id_list:
         get_prim_structure_info(data_dir, id)
-        enlarge_cell(deta_dir, id)
+        enlarge_cell(data_dir, id)
         get_betti_num(data_dir, id)
         func_map[fname](data_dir, id)
 

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 import math
+import re
 from structure import get_betti_num
 from config import *
 
@@ -28,13 +29,14 @@ def get_feature_composition(data_dir, id):
         ele_list = list(element_properties.loc[ele])
         for i in range(n):
             tmp_array.append(ele_list)
+
     Feature.append(np.mean(tmp_array, axis=0))
     Feature.append(np.std(tmp_array, axis=0))
     Feature.append(np.sum(tmp_array, axis=0))
-    Feature.append(np.max(tmp_array), axis=0)
-    Feature.append(np.min(tmp_array), axis=0)
+    Feature.append(np.max(tmp_array, axis=0))
+    Feature.append(np.min(tmp_array, axis=0))
 
-    Feature_1 = np.asarray(Feature_1, float)
+    Feature_1 = np.asarray(Feature, float)
     Feature_1 = np.concatenate(Feature_1, axis=0)
 
     if not os.path.exists(data_dir + "/feature_composition"):
@@ -45,13 +47,12 @@ def get_feature_composition(data_dir, id):
 
 
 def get_feature_with_s_nobin(data_dir, id):
-    with open(data_dir + '/atoms_frequency.txt', 'r') as sf:
-        slines = sf.read().splitlines()
+    # get atoms frequencey
+    atom_single = atoms_frequency()
     common_pair = {}
     i = 0
-    for line in slines:
-        s, n = line.split()
-        common_pair[s] = i
+    for key in sorted(atom_single, key=atom_single.__getitem__,reverse=True):
+        common_pair[key] = i
         i += 1
     com_len = len(common_pair)
     with open(data_dir + '/atoms/' + id + '_enlarge.npz', 'rb') as structfile:
@@ -75,7 +76,6 @@ def get_feature_with_s_nobin(data_dir, id):
     if lines == []:
         get_betti_num(data_dir, id)
     pair_dict = {}
-    pair_Barcode = {}
     pair_i = 0
     for line in lines:
         typ = line.split()[0]
@@ -244,13 +244,11 @@ def get_feature_with_s_nobin(data_dir, id):
         np.save(outfile, Feature)
 
 def get_feature_with_s_nobin_Bar0(data_dir, id):
-    with open(data_dir + '/atoms_frequency.txt', 'r') as sf:
-        slines = sf.read().splitlines()
+    atom_single = atoms_frequency()
     common_pair = {}
     i = 0
-    for line in slines:
-        s, n = line.split()
-        common_pair[s] = i
+    for key in sorted(atom_single, key=atom_single.__getitem__,reverse=True):
+        common_pair[key] = i
         i += 1
     com_len = len(common_pair)
     with open(data_dir + '/atoms/' + id + '_enlarge.npz', 'rb') as structfile:
@@ -368,3 +366,35 @@ def get_feature_topo_compo(data_dir, id):
 
     with open(data_dir + "/feature_topo_compo/" + name, "wb") as outfile:
         np.save(outfile, Feature)
+
+def atoms_frequency():
+    sub_dict = split_element(data_dir)
+    # print(sub_dict)
+    data_len = len(sub_dict)
+    atom_single = {}
+    for sub in sub_dict.keys():
+        for i in sub_dict[sub]:
+            if i not in atom_single:
+                atom_single[i] = 0.0
+            atom_single[i] += 1.0
+    return atom_single
+    # f = open(data_dir + '/atoms_frequecy.txt', 'w')
+    # for key in sorted(atom_single, key=atom_single.__getitem__,reverse=True):
+    #     f.write(key + " " + str(int(atom_single[key])) + "\n")
+
+    # f.close()
+
+def split_element(data_dir):
+    pattern = re.compile("[A-Z]{1}[a-z]{0,1}")
+    # substance to all pair
+    sub_dict = {}
+    ele_set = set()
+    with open(data_dir + '/properties.txt', 'r') as f:
+        lines = f.read().splitlines()
+    for line in lines:
+        sub = line.split()[0]
+        with open(data_dir + "/structure/" + sub, 'r') as tmp:
+            ls = tmp.read().splitlines()[0]
+        eles = set(pattern.findall(ls))
+        sub_dict[sub] = eles
+    return sub_dict
